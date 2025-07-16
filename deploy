@@ -1,0 +1,20 @@
+#!/bin/sh
+
+set -e  # Abort on failure
+[ ! -f .env ] || export $(grep -v '^#' .env | xargs)
+
+git push
+ssh demo.eugenego.club 'bash -s' << EOF
+set -x  # Show output
+set -e  # Abort on errors
+
+pwd
+cd $WEBSITE
+pwd
+git pull
+if docker ps|grep wagtail ; then
+  docker kill wagtail && docker rm -f wagtail
+fi
+docker build -t mysite --build-arg DJANGO_SUPERUSER_EMAIL=$DJANGO_SUPERUSER_EMAIL --build-arg DJANGO_SUPERUSER_USERNAME=$DJANGO_SUPERUSER_USERNAME --build-arg DJANGO_SUPERUSER_PASSWORD=$DJANGO_SUPERUSER_PASSWORD .
+docker run -d --name wagtail -p $PORT:8000 mysite
+EOF
